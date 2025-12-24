@@ -69,7 +69,7 @@
             transform: rotate(45deg); /* Correct icon rotation */
         }
         
-        /* Pulse effect for user location */
+        /* Pulse effect for user location (Domicile) */
         .user-pulse {
             background: rgba(59, 130, 246, 0.4);
             border-radius: 50%;
@@ -117,7 +117,11 @@
             <!-- Map View -->
             <div class="flex-1 relative bg-slate-200 h-1/2 md:h-full order-1 md:order-2">
                 <div id="map"></div>
-                <!-- Removed mobile-card as requested -->
+                
+                <!-- Geolocation Button -->
+                <button onclick="locateUser()" class="absolute bottom-4 right-4 bg-white p-3 rounded-full shadow-lg z-[500] text-slate-700 hover:text-blue-600 transition-colors active:scale-95 border border-slate-100">
+                    <i id="locate-icon" data-lucide="crosshair" class="w-6 h-6"></i>
+                </button>
             </div>
 
             <!-- List View (Sidebar) -->
@@ -177,13 +181,14 @@
             { id: 22, name: "Alain Batt", cat: "Mirabelle", specialty: "Mirabelle Confite", address: "Rue Saint-Georges", rating: 4.5, coords: [48.6925, 6.1850], description: "Spécialiste de la confiserie à la mirabelle (séchée, confite).", color: "#facc15", hours: "10:00 - 19:00", icon: "sun" }
         ];
 
-        // User Location (Approx Rue d'Auxonne near Gare)
-        const userLocation = { coords: [48.6880, 6.1730], label: "Vous êtes ici" };
+        // Hardcoded Home Location (Approx Rue d'Auxonne near Gare)
+        const homeLocation = { coords: [48.6880, 6.1730], label: "Domicile" };
 
         let currentCategory = 'Tous';
         let map;
         let markers = [];
         let selectedId = null;
+        let userGeoMarker = null;
 
         function init() {
             lucide.createIcons();
@@ -199,26 +204,73 @@
                 attribution: '© OpenStreetMap'
             }).addTo(map);
 
-            // Add User Marker (Maison)
-            const userIconHtml = `
+            // Add Home Marker
+            const homeIconHtml = `
                 <div class="relative w-8 h-8 flex items-center justify-center">
-                    <div class="user-pulse"></div>
-                    <div class="bg-blue-500 rounded-full p-1.5 shadow-lg border-2 border-white relative z-10">
-                        <i data-lucide="user" class="w-4 h-4 text-white"></i>
+                    <div class="bg-blue-100 rounded-full p-1.5 shadow-md border-2 border-white text-blue-600">
+                        <i data-lucide="map-pin-house" class="w-4 h-4"></i>
                     </div>
                 </div>`;
             
-            const userIcon = L.divIcon({
+            const homeIcon = L.divIcon({
                 className: 'custom-marker-icon',
-                html: userIconHtml,
+                html: homeIconHtml,
                 iconSize: [32, 32],
                 iconAnchor: [16, 16]
             });
 
-            const userMarker = L.marker(userLocation.coords, { icon: userIcon }).addTo(map);
-            userMarker.bindTooltip("Rue d'Auxonne", { permanent: true, direction: "bottom", offset: [0, 10], className: "custom-tooltip text-blue-600" });
+            const homeMarker = L.marker(homeLocation.coords, { icon: homeIcon }).addTo(map);
+            homeMarker.bindTooltip("Domicile", { permanent: true, direction: "bottom", offset: [0, 8], className: "custom-tooltip text-blue-600" });
 
             updateMarkers();
+        }
+
+        function locateUser() {
+            if (!navigator.geolocation) {
+                alert("La géolocalisation n'est pas supportée par votre navigateur.");
+                return;
+            }
+
+            const btnIcon = document.getElementById('locate-icon');
+            btnIcon.classList.add('animate-spin'); // Feedback
+
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude;
+                    const lng = position.coords.longitude;
+
+                    // Remove existing geo marker if any
+                    if (userGeoMarker) {
+                        map.removeLayer(userGeoMarker);
+                    }
+
+                    // Create Blue Dot Marker (GPS style)
+                    const gpsIconHtml = `
+                        <div class="relative w-8 h-8 flex items-center justify-center">
+                            <div class="absolute w-full h-full bg-blue-500/40 rounded-full animate-ping"></div>
+                            <div class="relative w-4 h-4 bg-blue-600 rounded-full border-2 border-white shadow-md"></div>
+                        </div>`;
+                    
+                    const gpsIcon = L.divIcon({
+                        className: 'custom-marker-icon',
+                        html: gpsIconHtml,
+                        iconSize: [32, 32],
+                        iconAnchor: [16, 16]
+                    });
+
+                    userGeoMarker = L.marker([lat, lng], { icon: gpsIcon }).addTo(map);
+                    userGeoMarker.bindTooltip("Ma position", { direction: "top", offset: [0, -10], className: "custom-tooltip text-blue-600 font-bold" });
+
+                    map.flyTo([lat, lng], 16);
+                    btnIcon.classList.remove('animate-spin');
+                },
+                (error) => {
+                    console.error("Erreur de géolocalisation", error);
+                    alert("Impossible de vous localiser. Vérifiez que le GPS est activé.");
+                    btnIcon.classList.remove('animate-spin');
+                },
+                { enableHighAccuracy: true }
+            );
         }
 
         function setCategory(cat) {
