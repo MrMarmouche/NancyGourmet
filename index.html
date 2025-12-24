@@ -117,25 +117,7 @@
             <!-- Map View -->
             <div class="flex-1 relative bg-slate-200 h-1/2 md:h-full order-1 md:order-2">
                 <div id="map"></div>
-                
-                <!-- Floating Info Card (Compact Mobile) -->
-                <div id="mobile-card" class="md:hidden absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-sm p-3 rounded-xl shadow-2xl z-[1000] hidden transition-all transform translate-y-0 border-l-4 border-amber-500">
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <span id="mob-tag" class="text-[9px] uppercase font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded-full">TAG</span>
-                            <h3 id="mob-title" class="font-bold text-base text-slate-900 mt-0.5">Title</h3>
-                        </div>
-                        <div class="flex items-center text-amber-600 font-bold bg-amber-50 px-1.5 py-0.5 rounded text-xs">
-                            <span id="mob-rating">4.5</span> <i data-lucide="star" class="w-3 h-3 ml-0.5 fill-current"></i>
-                        </div>
-                    </div>
-                    <!-- Removed description for compactness -->
-                    <div class="flex flex-col gap-1 mt-2 pt-2 border-t border-slate-100">
-                        <p id="mob-hours" class="text-xs text-slate-500 flex items-center gap-1.5 font-medium"><i data-lucide="clock" class="w-3 h-3 text-amber-500"></i> <span>08:00 - 19:00</span></p>
-                        <p id="mob-address" class="text-xs text-slate-400 flex items-center gap-1.5 truncate"><i data-lucide="map-pin" class="w-3 h-3 text-amber-500"></i> <span>Address</span></p>
-                    </div>
-                    <button onclick="closeMobileCard()" class="absolute top-2 right-2 text-slate-300 p-2 -mr-2 -mt-2"><i data-lucide="x" class="w-4 h-4"></i></button>
-                </div>
+                <!-- Removed mobile-card as requested -->
             </div>
 
             <!-- List View (Sidebar) -->
@@ -274,6 +256,7 @@
 
             data.forEach(loc => {
                 const card = document.createElement('div');
+                card.id = `card-${loc.id}`; // Add ID for scrolling
                 const isSelected = selectedId === loc.id;
                 card.className = `p-4 rounded-xl border transition-all cursor-pointer ${isSelected ? 'border-amber-500 bg-amber-50 shadow-sm ring-1 ring-amber-500' : 'border-slate-200 bg-white hover:border-amber-300'}`;
                 
@@ -370,39 +353,19 @@
         function focusLocation(loc) {
             selectedId = loc.id;
             
-            // Adjust flyTo to account for mobile card (pan slightly lower)
-            let targetLat = loc.coords[0];
-            if (window.innerWidth < 768) {
-                targetLat -= 0.002; // Shift map down slightly so point is above card
-            }
+            // Pan map
+            map.flyTo(loc.coords, 16, { duration: 1.0 });
             
-            map.flyTo([targetLat, loc.coords[1]], 16, { duration: 1.0 });
             renderList();
             updateMarkers(); // Redraw to update marker sizes
 
-            // Mobile Card Update
-            if (window.innerWidth < 768) {
-                const card = document.getElementById('mobile-card');
-                document.getElementById('mob-title').innerText = loc.name;
-                document.getElementById('mob-tag').innerText = loc.specialty;
-                document.getElementById('mob-rating').innerText = loc.rating;
-                // Removed Description
-                document.getElementById('mob-hours').innerHTML = `<i data-lucide="clock" class="w-3 h-3 text-amber-500"></i> <span>${loc.hours}</span>`;
-                document.getElementById('mob-address').innerHTML = `<i data-lucide="map-pin" class="w-3 h-3 text-amber-500"></i> <span>${loc.address}</span>`;
-                
-                card.classList.remove('hidden');
-                setTimeout(() => {
-                    card.classList.remove('translate-y-10', 'opacity-0');
-                }, 10);
-                lucide.createIcons();
-            }
-        }
-
-        function closeMobileCard() {
-            const card = document.getElementById('mobile-card');
-            card.classList.add('hidden');
-            selectedId = null;
-            updateMarkers(); // Reset marker sizes
+            // Scroll Logic for Mobile & Desktop
+            setTimeout(() => {
+                const card = document.getElementById(`card-${loc.id}`);
+                if (card) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 50); // Small delay to ensure rendering is done
         }
 
         window.onload = init;
